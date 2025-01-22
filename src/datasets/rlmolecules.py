@@ -6,6 +6,7 @@ import yaml
 import shutil
 import os.path as osp
 from tqdm import tqdm
+import py3Dmol
 
 import numpy as np
 import pandas as pd
@@ -14,7 +15,7 @@ from torch_geometric.data import InMemoryDataset, Data
 
 import rdkit.Chem as Chem
 import rdkit.Chem.AllChem as AllChem
-
+import random
 
 class RLMolecules(InMemoryDataset):
     def __init__(self, root, seed, data_config = None):
@@ -22,6 +23,7 @@ class RLMolecules(InMemoryDataset):
         self.COUNT = 1000
         self.data_config = data_config
         self.ATOM_TYPES = ['C', 'N', 'O', 'S', 'F', 'P', 'Cl', 'Br', 'Na', 'Ca', 'I', 'B', 'H', '*']
+        self.data_list = None
         super().__init__(root)
         self.data, self.slices, self.idx_split = torch.load(self.processed_paths[0])
         self.x_dim = self.data.x.shape[1]
@@ -63,8 +65,9 @@ class RLMolecules(InMemoryDataset):
         idx_split = {"train": [], "valid": [], "test": []}
 
         mols = []
-        class1_dir = 'ligands_pdb_class1'
-        class0_dir = 'ligands_pdb_class0'
+        class1_dir = 'rlmolecules_utils/ligands_pdb_class1'
+        class0_dir = 'rlmolecules_utils/ligands_pdb_class0'
+        
 
         class1_size = 0
         class0_size = 0
@@ -87,6 +90,9 @@ class RLMolecules(InMemoryDataset):
                 if class0_size == self.COUNT / 2:
                     break
         
+        random.seed(self.seed)
+        random.shuffle(mols)
+
         print('class1_size:', class1_size, 'class0_size:', class0_size)
 
         n_node_features = 14
@@ -105,6 +111,16 @@ class RLMolecules(InMemoryDataset):
         # Collect valid top and bottom molecules
         idx = 0
         for mol, y in mols:
+            
+            style='stick'
+            mblock = Chem.MolToMolBlock(mol)
+            view = py3Dmol.view(width=200, height=200)
+            view.addModel(mblock, 'mol')
+            view.setStyle({style:{}})
+            view.zoomTo()
+            view.show()
+            
+            
             n_nodes = mol.GetNumAtoms()
             x = np.zeros((n_nodes, n_node_features))
             for atom in mol.GetAtoms():
@@ -112,7 +128,7 @@ class RLMolecules(InMemoryDataset):
         
             x = torch.tensor(x, dtype = torch.float)
             pos = torch.tensor(mol.GetConformer().GetPositions(), dtype=torch.float)
-            node_label = torch.zeros(x.shape[0], dtype=torch.long)
+            node_label = torch.randint(0, 2, (x.shape[0],), dtype=torch.long)
 
             y = torch.tensor(y).reshape(-1, 1)
             data = Data(x=x, pos=pos, y=y, node_label=node_label, mol_df_idx=idx)
@@ -121,6 +137,7 @@ class RLMolecules(InMemoryDataset):
             idx += 1
 
         # Final data collation and saving
+        self.data_list = data_list
         data, slices = self.collate(data_list)
         torch.save((data, slices, idx_split), self.processed_paths[0])
 
@@ -150,3 +167,11 @@ class RLMolecules(InMemoryDataset):
 if __name__ == "__main__":
     data_config = yaml.safe_load(open('../configs/rlmolecules.yml'))['data']
     dataset = RLMolecules(root="../../data/rlmolecules", data_config=data_config, seed=42)
+    data_list = dataset.data_list
+
+    for mol in data_list:
+        print(mol)
+
+
+
+

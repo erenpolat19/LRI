@@ -1,7 +1,6 @@
 import pandas as pd
 
 from rdkit import Chem
-
 from rdkit.Chem import QED, Crippen
 
 from rdkit.Contrib.SA_Score import sascorer
