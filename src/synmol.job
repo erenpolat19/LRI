@@ -1,0 +1,10 @@
+#!/bin/bash  -l
+#SBATCH --nodes=1 --ntasks-per-node 12
+
+cd $SLURM_SUBMIT_DIR
+
+/bin/hostname
+
+conda activate lri
+
+python trainer.py --backbone dgcnn --dataset synmol --method lri_bern

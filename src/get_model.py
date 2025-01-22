@@ -10,7 +10,7 @@ from utils import ExtractorMLP, MLP, CoorsNorm
 class Model(nn.Module):
     def __init__(self, model_name, model_config, method_name, method_config, dataset):
         super().__init__()
-        assert dataset.dataset_name in ['tau3mu', 'plbind', 'synmol'] or 'actstrack' in dataset.dataset_name
+        assert dataset.dataset_name in ['tau3mu', 'plbind', 'synmol', 'rlmolecules'] or 'actstrack' in dataset.dataset_name
         self.dataset = dataset
         self.dataset_name = dataset.dataset_name
         self.method_name = method_name
@@ -131,6 +131,13 @@ class Model(nn.Module):
             edge_attr = self.calc_edge_attr(pos, edge_index)
 
         elif self.dataset_name == 'synmol':
+            pos = pos * 5.0 if self.pos_coef is None else pos * self.pos_coef
+            pos = self.add_noise(pos, node_noise)
+
+            edge_index = knn_graph(pos, k=5 if self.kr is None else int(self.kr), batch=batch, loop=True)
+            edge_attr = self.calc_edge_attr(pos, edge_index)
+        
+        elif self.dataset_name == 'rlmolecules':
             pos = pos * 5.0 if self.pos_coef is None else pos * self.pos_coef
             pos = self.add_noise(pos, node_noise)
 

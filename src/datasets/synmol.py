@@ -115,9 +115,10 @@ class SynMol(InMemoryDataset):
             m = Chem.RemoveHs(m)
             pos = torch.tensor(m.GetConformer().GetPositions(), dtype=torch.float)
             assert x.shape[0] == m.GetNumAtoms()
+
             for j in range(m.GetNumAtoms()):
                 assert self.ATOM_TYPES[x[j]] == m.GetAtomWithIdx(j).GetSymbol() or m.GetAtomWithIdx(j).GetSymbol() not in self.ATOM_TYPES
-
+            
             data_list.append(Data(x=x, pos=pos, y=y, node_label=node_label, mol_df_idx=idx))
             idx_split[split_dict[idx]].append(cnt)
             cnt += 1
