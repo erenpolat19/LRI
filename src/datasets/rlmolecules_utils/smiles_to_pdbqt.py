@@ -18,17 +18,6 @@ import tempfile
 
 # Set up base directories
 
-BASE_DIR = Path().resolve()
-
-LIGANDS_PDB_DIR = BASE_DIR / "ligands_pdb"
-
-LIGANDS_PDBQT_DIR = BASE_DIR / "ligands_pdbqt"
-
-
-
-LIGANDS_PDB_DIR.mkdir(exist_ok=True)
-
-LIGANDS_PDBQT_DIR.mkdir(exist_ok=True)
 
 
 
@@ -62,8 +51,8 @@ def process_smiles_to_pdb(smiles_data):
 
         # Optimize ligand geometry
 
-        AllChem.UFFOptimizeMolecule(protonated_lig)
-
+        #AllChem.UFFOptimizeMolecule(protonated_lig)
+        AllChem.MMFFOptimizeMolecule(protonated_lig, maxIters=1000)
 
 
         # Save ligand as PDB
@@ -132,11 +121,11 @@ def convert_pdb_to_pdbqt(pdb_data):
 
 
 
-def process_smiles_file(filename, output_dir, ncpu=None):
+def process_smiles_file(filename, output_dir, error_dir, ncpu=None):
 
-    logfile = os.path.join(output_dir, "error.log")
+    logfile = os.path.join(error_dir, "error.log")
 
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(error_dir, exist_ok=True)
 
 
 
@@ -145,15 +134,13 @@ def process_smiles_file(filename, output_dir, ncpu=None):
     smiles_df = pd.read_csv(filename)
 
     # Sort the DataFrame by the 'score_Docking' column in ascending order
-    sorted_df = smiles_df.sort_values(by='score_Docking')
+    smiles_df = smiles_df.sort_values(by='score_Docking')
 
     # Select the top 4000 and bottom 4000 rows
-    smiles_df = sorted_df.head(5000)
+    smiles_df = smiles_df.tail(5000)
 
     # Reset the index of the resulting DataFrame
     smiles_df = smiles_df.reset_index(drop=True)
-
-    smiles_df.to_csv('top500.csv', index=False)
 
     smiles_strs = smiles_df['smiles'].values
 
@@ -189,13 +176,13 @@ def process_smiles_file(filename, output_dir, ncpu=None):
 
 
 
-    with Pool(ncpu) as pool:
+    # with Pool(ncpu) as pool:
 
-        pool.map(convert_pdb_to_pdbqt, pdb_files)
+    #     pool.map(convert_pdb_to_pdbqt, pdb_files)
 
-        pool.close()  # Ensure all PDB files are generated
+    #     pool.close()  # Ensure all PDB files are generated
 
-        pool.join()
+    #     pool.join()
 
 
 
@@ -211,9 +198,13 @@ if __name__ == '__main__':
 
                         help='Input CSV file containing SMILES strings.')
 
-    parser.add_argument('-o', '--output_dir', metavar='DIRNAME', type=str, required=True,
+    parser.add_argument('-e', '--error_dir', metavar='DIRNAME', type=str, required=True,
 
                         help='Output directory to save error log.')
+
+    parser.add_argument('-o', '--output_dir', metavar='ERRORDIRNAME', type=str, required=True,
+
+                        help='Output prefix to save pdb log.')
 
     parser.add_argument('-c', '--ncpu', type=int, default=None,
 
@@ -224,9 +215,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     
+    BASE_DIR = Path().resolve()
+
+    LIGANDS_PDB_DIR = BASE_DIR / (args.output_dir + "_pdb")
+
+    LIGANDS_PDBQT_DIR = BASE_DIR / (args.output_dir + "_pdbqt")
+
+
+
+    LIGANDS_PDB_DIR.mkdir(exist_ok=True)
+
+    #LIGANDS_PDBQT_DIR.mkdir(exist_ok=True)
 
     if not os.path.exists(args.input):
 
         raise FileNotFoundError(f"Input file {args.input} does not exist.")
 
-    process_smiles_file(args.input, args.output_dir, args.ncpu)
+    process_smiles_file(args.input, args.output_dir, args.error_dir, args.ncpu)

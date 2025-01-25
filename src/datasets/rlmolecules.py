@@ -21,7 +21,7 @@ import random
 class RLMolecules(InMemoryDataset):
     def __init__(self, root, seed, data_config = None):
         self.seed = seed
-        self.COUNT = 1000
+        self.COUNT = 9000
         self.data_config = data_config
         self.ATOM_TYPES = ['C', 'N', 'O', 'S', 'F', 'P', 'Cl', 'Br', 'Na', 'Ca', 'I', 'B', 'H', '*']
         self.data_list = None
@@ -66,8 +66,8 @@ class RLMolecules(InMemoryDataset):
         idx_split = {"train": [], "valid": [], "test": []}
 
         mols = []
-        class1_dir = 'rlmolecules_utils/ligands_pdb_class1'
-        class0_dir = 'rlmolecules_utils/ligands_pdb_class0'
+        class1_dir = 'rlmolecules_utils/top5000_pdb'
+        class0_dir = 'rlmolecules_utils/bottom5000_pdb'
         
 
         class1_size = 0
@@ -112,23 +112,7 @@ class RLMolecules(InMemoryDataset):
         # Collect valid top and bottom molecules
         idx = 0
         for mol, y in mols:
-
-            # style='stick'
-            # mblock = Chem.MolToMolBlock(mol)
-            # view = py3Dmol.view(width=200, height=200)
-            # view.addModel(mblock, 'mol')
-            # view.setStyle({style:{}})
-            # view.zoomTo()
-            # view.show()
-            
-            # # Save the rendered image
-            # view.png()
-
-            if idx < 20:
-                image = Draw.MolToImage(mol)
-                image.save(f"molecule{idx}.png")
-            
-            
+         
             n_nodes = mol.GetNumAtoms()
             x = np.zeros((n_nodes, n_node_features))
             for atom in mol.GetAtoms():
@@ -144,6 +128,12 @@ class RLMolecules(InMemoryDataset):
             idx_split[split_dict[idx]].append(idx)
             idx += 1
 
+        all_splits = idx_split['train'] + idx_split['valid'] + idx_split['test']
+
+        # Check if there are any duplicates across the splits
+        if len(all_splits) != len(set(all_splits)):
+            print("Warning: There are overlapping indices between splits!")
+            
         # Final data collation and saving
         self.data_list = data_list
         data, slices = self.collate(data_list)
