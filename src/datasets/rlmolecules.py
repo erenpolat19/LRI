@@ -15,6 +15,7 @@ from torch_geometric.data import InMemoryDataset, Data
 
 import rdkit.Chem as Chem
 import rdkit.Chem.AllChem as AllChem
+from rdkit.Chem import Draw
 import random
 
 class RLMolecules(InMemoryDataset):
@@ -111,14 +112,21 @@ class RLMolecules(InMemoryDataset):
         # Collect valid top and bottom molecules
         idx = 0
         for mol, y in mols:
+
+            # style='stick'
+            # mblock = Chem.MolToMolBlock(mol)
+            # view = py3Dmol.view(width=200, height=200)
+            # view.addModel(mblock, 'mol')
+            # view.setStyle({style:{}})
+            # view.zoomTo()
+            # view.show()
             
-            style='stick'
-            mblock = Chem.MolToMolBlock(mol)
-            view = py3Dmol.view(width=200, height=200)
-            view.addModel(mblock, 'mol')
-            view.setStyle({style:{}})
-            view.zoomTo()
-            view.show()
+            # # Save the rendered image
+            # view.png()
+
+            if idx < 20:
+                image = Draw.MolToImage(mol)
+                image.save(f"molecule{idx}.png")
             
             
             n_nodes = mol.GetNumAtoms()
@@ -167,11 +175,6 @@ class RLMolecules(InMemoryDataset):
 if __name__ == "__main__":
     data_config = yaml.safe_load(open('../configs/rlmolecules.yml'))['data']
     dataset = RLMolecules(root="../../data/rlmolecules", data_config=data_config, seed=42)
-    data_list = dataset.data_list
-
-    for mol in data_list:
-        print(mol)
-
-
+    
 
 
